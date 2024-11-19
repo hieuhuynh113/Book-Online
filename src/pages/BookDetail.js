@@ -1,51 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Comments from '../components/Books/Comments';
 import { fetchBook } from '../services/api';
-import { FaStar, FaBookmark, FaShare, FaDownload, FaHeart, FaRegHeart, FaEye } from 'react-icons/fa';
+import { FaStar, FaBookmark, FaShare, FaHeart, FaRegHeart, FaEye, FaShoppingCart } from 'react-icons/fa';
 
 const BookDetail = () => {
   const { id } = useParams();
   const [isLiked, setIsLiked] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
+  const [book, setBook] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
 
-  // Mock data - replace with actual API call
-  const book = {
-    id: id,
-    title: "Đắc Nhân Tâm",
-    author: "Dale Carnegie",
-    coverImage: "https://nxbhcm.com.vn/Image/Biasach/dacnhantam86.jpg",
-    rating: 4.8,
-    reviews: 1250,
-    views: "15.2K",
-    categories: ["Self-Help", "Psychology", "Personal Development"],
-    description: `Đắc Nhân Tâm (How to Win Friends and Influence People) là một trong những cuốn sách nổi tiếng nhất của Dale Carnegie và của mọi thời đại.
+  useEffect(() => {
+    const loadBook = async () => {
+      try {
+        const data = await fetchBook(id);
+        setBook(data);
+      } catch (error) {
+        console.error('Error loading book:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    Đây là cuốn sách duy nhất về thể loại self-help liên tục đứng đầu danh mục sách bán chạy nhất (best-selling Books) do báo The New York Times bình chọn suốt 10 năm liền.
+    loadBook();
+  }, [id]);
 
-    Được xuất bản năm 1936, với số lượng bán ra hơn 15 triệu bản, Đắc Nhân Tâm là một trong những cuốn sách được dịch ra nhiều thứ tiếng và được bán nhiều nhất trên thế giới.`,
-    publishedDate: "1936",
-    publisher: "Simon & Schuster",
-    pages: 291,
-    language: "Tiếng Việt",
-    isbn: "978-0671027032",
-    chapters: [
-      { id: 1, title: "Chương 1: Những nguyên tắc cơ bản", pages: 25 },
-      { id: 2, title: "Chương 2: Sáu cách tạo thiện cảm", pages: 30 },
-      { id: 3, title: "Chương 3: Cách thuyết phục người khác", pages: 28 },
-      // Add more chapters
-    ]
-  };
+  if (loading) {
+    return (
+      <div className="pt-16 min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-  const relatedBooks = [
-    {
-      id: 2,
-      title: "Think and Grow Rich",
-      author: "Napoleon Hill",
-      coverImage: "https://nxbhcm.com.vn/Image/Biasach/dacnhantam86.jpg",
-    },
-    // Add more related books
-  ];
+  if (!book) {
+    return (
+      <div className="pt-16 min-h-screen flex justify-center items-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-700">Book not found</h2>
+          <p className="text-gray-500 mt-2">The book you're looking for doesn't exist.</p>
+          <Link to="/" className="mt-4 inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Go back home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const discountedPrice = book.price - (book.price * book.discount) / 100;
 
   return (
     <div className="pt-16 bg-gray-50 min-h-screen">
@@ -55,18 +59,54 @@ const BookDetail = () => {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Book Cover */}
             <div className="w-full md:w-1/3 lg:w-1/4">
-              <img 
-                src={book.coverImage} 
-                alt={book.title}
-                className="w-full rounded-lg shadow-lg"
-              />
-              <div className="mt-4 flex justify-center gap-4">
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                  <FaBookmark /> Bookmark
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
-                  <FaShare /> Share
-                </button>
+              <div className="relative">
+                <img 
+                  src={book.coverImage} 
+                  alt={book.title}
+                  className="w-full rounded-lg shadow-lg"
+                />
+                {book.discount > 0 && (
+                  <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-lg font-semibold">
+                    -{book.discount}%
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(discountedPrice)}
+                    </p>
+                    {book.discount > 0 && (
+                      <p className="text-sm text-gray-500 line-through">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(book.price)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                      className="px-2 py-1 bg-gray-200 rounded"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center">{quantity}</span>
+                    <button 
+                      onClick={() => setQuantity(prev => prev + 1)}
+                      className="px-2 py-1 bg-gray-200 rounded"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <FaShoppingCart /> Add to Cart
+                  </button>
+                  <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    <FaShare /> Share
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -98,7 +138,7 @@ const BookDetail = () => {
               </div>
 
               <div className="flex flex-wrap gap-2 mb-6">
-                {book.categories.map((category, index) => (
+                {book.categories && book.categories.map((category, index) => (
                   <span 
                     key={index}
                     className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
@@ -122,101 +162,90 @@ const BookDetail = () => {
                   <p className="font-semibold">{book.language}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-sm text-gray-500">ISBN</h3>
-                  <p className="font-semibold">{book.isbn}</p>
+                  <h3 className="text-sm text-gray-500">Publisher</h3>
+                  <p className="font-semibold">{book.publisher}</p>
                 </div>
               </div>
 
-              <Link
-                to={`/book/${id}/read`}
-                className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
-              >
-                Start Reading
-              </Link>
+              <div className="space-y-4">
+                <div className="flex gap-4 border-b">
+                  <button
+                    className={`px-4 py-2 font-medium ${
+                      activeTab === 'description'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveTab('description')}
+                  >
+                    Description
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium ${
+                      activeTab === 'chapters'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveTab('chapters')}
+                  >
+                    Chapters
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium ${
+                      activeTab === 'reviews'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveTab('reviews')}
+                  >
+                    Reviews
+                  </button>
+                </div>
+
+                {activeTab === 'description' ? (
+                  <p className="text-gray-700 whitespace-pre-line">
+                    {book.description}
+                  </p>
+                ) : activeTab === 'chapters' ? (
+                  <div className="space-y-2">
+                    {book.chapters && book.chapters.map((chapter) => (
+                      <div
+                        key={chapter.id}
+                        className="flex justify-between items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition"
+                      >
+                        <span className="font-medium">{chapter.title}</span>
+                        <span className="text-gray-500">{chapter.pages} pages</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {book.comments && book.comments.map((comment) => (
+                      <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-medium">{comment.user}</h4>
+                            <p className="text-sm text-gray-500">{comment.date}</p>
+                          </div>
+                          <div className="flex items-center">
+                            <FaStar className="text-yellow-400 mr-1" />
+                            <span>{comment.rating}</span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700">{comment.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content Tabs */}
+      {/* Comments Section */}
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="flex border-b">
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'description' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-              }`}
-              onClick={() => setActiveTab('description')}
-            >
-              Description
-            </button>
-            <button
-              className={`px-6 py-3 font-medium ${
-                activeTab === 'chapters' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-              }`}
-              onClick={() => setActiveTab('chapters')}
-            >
-              Chapters
-            </button>
-            <button
-                className={`px-6 py-3 font-medium ${
-                activeTab === 'comments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'
-                }`}
-                onClick={() => setActiveTab('comments')}
-            >
-                Comments
-            </button>
-          </div>
-
-          <div className="p-6">
-            {activeTab === 'description' ? (
-              <div className="prose max-w-none">
-                <p className="whitespace-pre-line">{book.description}</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {book.chapters.map((chapter) => (
-                  <div 
-                    key={chapter.id}
-                    className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-                  >
-                    <h3 className="font-medium">{chapter.title}</h3>
-                    <span className="text-gray-500">{chapter.pages} pages</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {activeTab === 'comments' && (
-                <Comments bookId={id} comments={book.comments} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Related Books */}
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">Related Books</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {relatedBooks.map((book) => (
-            <Link 
-              key={book.id} 
-              to={`/book/${book.id}`}
-              className="block group"
-            >
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <img 
-                  src={book.coverImage} 
-                  alt={book.title}
-                  className="w-full h-48 object-cover group-hover:opacity-90 transition"
-                />
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition">{book.title}</h3>
-                  <p className="text-sm text-gray-500">{book.author}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <h2 className="text-2xl font-bold mb-6">Reviews & Comments</h2>
+        <Comments bookId={id} comments={book.comments} />
       </div>
     </div>
   );
